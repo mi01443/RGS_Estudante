@@ -149,7 +149,7 @@ const App = {
     try {
       const d = await gsCall('tudo');
       if (d && d.alunos)  students = d.alunos;
-      if (d && d.tarefas) tasks    = d.tarefas;
+      if (d && d.tarefas) tasks    = d.tarefas.map(normalizarTarefa);
       const r = await gsCall('resultados');
       if (r && r.resultados) results = r.resultados;
       setBadge('ok', '✅ Online');
@@ -195,7 +195,7 @@ const App = {
     // Carrega tarefas frescas
     showLoad('Carregando missões...');
     const t = await gsCall('tarefas');
-    if (t && t.tarefas) tasks = t.tarefas;
+    if (t && t.tarefas) tasks = t.tarefas.map(normalizarTarefa);
     hideLoad();
 
     prevScreen = 'screenChild';
@@ -297,20 +297,16 @@ const App = {
   },
 
   selectOpt(btn) {
-    const selected = btn.dataset.opt;
-    const answer   = btn.dataset.ans;
+    const selected = btn.dataset.opt || '';
+    const answer   = btn.dataset.ans || '';
+    console.log('Selected:', selected, '| Answer:', answer);
     document.querySelectorAll('.opt-btn').forEach(b => b.disabled = true);
-    // Compara só a letra da alternativa (A, B, C, D) para ser mais tolerante
-    const letra = s => (s || '').trim().charAt(0).toUpperCase();
-    const ok = letra(selected) === letra(answer) || selected.trim().toLowerCase() === answer.trim().toLowerCase();
+    const norm = s => (s || '').trim().toLowerCase().replace(/^[a-d][).:\s]+/,'');
+    const ok   = norm(selected) === norm(answer);
     btn.classList.add(ok ? 'correct' : 'wrong');
     if (!ok) {
       document.querySelectorAll('.opt-btn').forEach(b => {
-        const bLetra = letra(b.dataset.opt);
-        const aLetra = letra(answer);
-        if (bLetra === aLetra || b.dataset.opt.trim().toLowerCase() === answer.trim().toLowerCase()) {
-          b.classList.add('correct');
-        }
+        if (norm(b.dataset.opt) === norm(answer)) b.classList.add('correct');
       });
     }
     this.showFeedback(ok, answer);
@@ -386,7 +382,7 @@ const App = {
       students = d.alunos;
       currentStudent = students.find(s => s.nome.toLowerCase() === currentStudent.nome.toLowerCase()) || currentStudent;
     }
-    if (d && d.tarefas) tasks = d.tarefas;
+    if (d && d.tarefas) tasks = d.tarefas.map(normalizarTarefa);
     hideLoad();
     this.refreshChild();
     showScreen('screenChild');
@@ -438,7 +434,7 @@ const App = {
     showLoad('Carregando painel...');
     const d = await gsCall('tudo');
     if (d && d.alunos)  students = d.alunos;
-    if (d && d.tarefas) tasks    = d.tarefas;
+    if (d && d.tarefas) tasks    = d.tarefas.map(normalizarTarefa);
     const r = await gsCall('resultados');
     if (r && r.resultados) results = r.resultados;
     hideLoad();
@@ -620,6 +616,20 @@ REGRAS OBRIGATÓRIAS:
       if (!jm) throw new Error('JSON não encontrado. Resposta: ' + text.slice(0, 100));
       const parsed = JSON.parse(jm[0]);
       if (!parsed.questions || !parsed.questions.length) throw new Error('Sem questões na resposta');
+      // Normaliza questões — garante formato correto
+      parsed.questions = parsed.questions.map(q => {
+        // Garante que options existe e tem 4 itens
+        const opts = (q.options || []).map((o, i) => {
+          const letters = ['A','B','C','D'];
+          const clean = o.replace(/^[A-Da-d][).:]\s*/,'').trim();
+          return `${letters[i]}) ${clean}`;
+        });
+        // Encontra a resposta correta pelo conteúdo
+        const ansClean = (q.answer || '').replace(/^[A-Da-d][).:]\s*/,'').trim().toLowerCase();
+        const matched  = opts.find(o => o.replace(/^[A-D]\) /,'').toLowerCase() === ansClean) || opts[0];
+        console.log('Q:', q.question, '| ANS:', matched, '| OPTS:', opts);
+        return { question: q.question, options: opts, answer: matched };
+      });
       geradaTemp = { id: 't' + Date.now(), name: parsed.title, subject, diff, questions: parsed.questions, xp: qty * 10, created: new Date().toISOString(), done: false, targetStudent: target || '' };
       this.showPreview();
     } catch (e) {
@@ -721,6 +731,24 @@ REGRAS OBRIGATÓRIAS:
 // ──────────────────────────────────────────
 //  UTILITÁRIOS
 // ──────────────────────────────────────────
+function normalizarTarefa(t) {
+  if (!t || !t.questions) return t;
+  t.questions = t.questions.map(q => {
+    if (!q.options || !q.options.length) return q;
+    // Garante prefixo A) B) C) D)
+    const letters = ['A','B','C','D'];
+    const opts = q.options.map((o, i) => {
+      const clean = (o || '').replace(/^[A-Da-d][).:]\s*/,'').trim();
+      return `${letters[i] || i}) ${clean}`;
+    });
+    // Encontra resposta correta
+    const ansRaw   = (q.answer || '').replace(/^[A-Da-d][).:]\s*/,'').trim().toLowerCase();
+    const matched  = opts.find(o => o.replace(/^[A-D]\) /i,'').toLowerCase() === ansRaw);
+    return { question: q.question, options: opts, answer: matched || opts[0] };
+  });
+  return t;
+}
+
 function subIcon(s) {
   return { Matemática:'🔢', Português:'📝', Ciências:'🔬', História:'📜', Geografia:'🗺️', Inglês:'🌍', Lógica:'🧠' }[s] || '📚';
 }
