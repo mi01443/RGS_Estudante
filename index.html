@@ -6,6 +6,14 @@
 <title>RGS Estudante 🚀</title>
 <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="app.css">
+
+<!-- PWA -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#b06eff">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="RGS Estudante">
+<link rel="apple-touch-icon" href="icon-192.png">
 </head>
 <body>
 
@@ -47,6 +55,7 @@
     <div class="logo">RGS<span>Est.</span>🚀<small>ESTUDANTE</small></div>
     <div class="header-right">
       <span class="gs-badge" id="gsBadge">⏳</span>
+      <button class="mode-btn" id="installBtn" onclick="App.installPWA()" style="display:none">📲 Instalar</button>
       <button class="mode-btn" id="modeBtn" onclick="App.toggleMode()">🔒 Pais</button>
     </div>
   </div>
@@ -311,5 +320,14 @@
 </div><!-- /appRoot -->
 
 <script src="app.js"></script>
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/RGS_Estudante/sw.js')
+      .then(r => console.log('SW registrado'))
+      .catch(e => console.log('SW erro:', e));
+  });
+}
+</script>
 </body>
 </html>
