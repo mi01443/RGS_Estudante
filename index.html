@@ -425,7 +425,7 @@ body{background:#0d0820;min-height:100vh;font-family:'Nunito',sans-serif;color:v
 //  CONFIG — cole a URL do Google Apps Script aqui
 //  (pode também configurar no painel dos pais)
 // ═══════════════════════════════════════════════
-const GS_URL_FIXED = 'https://script.google.com/macros/s/AKfycbxvFxmC5_zWMsGa9QaGRkug58O81MhZ-DTHuXFE1EU9lJH2x61XuIpBp4S7IMw2_W3d/exec';
+const GS_URL_FIXED = 'https://script.google.com/macros/s/AKfycbwxARwNfJxbi8gv_3tAotSwXegMt23AkEEBSr2-q5LdvQDIDcygXDEeP7o3WvSXzM74/exec';
 
 // ═══════════════════════════════════════════════
 //  ESTADO
@@ -507,9 +507,18 @@ async function gsGet(tipo){
 async function gsPost(data){
   if(!GS_URL) return false;
   try{
-    await fetch(GS_URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
-    return true;
-  }catch(e){return false;}
+    let url=GS_URL+'?action=';
+    let payload='';
+    if(data.type==='student'){url+='salvarAluno';payload=encodeURIComponent(JSON.stringify(data.student));}
+    else if(data.type==='task'){url+='salvarTarefa';payload=encodeURIComponent(JSON.stringify(data.task));}
+    else if(data.type==='result'){url+='salvarResultado';payload=encodeURIComponent(JSON.stringify(data));}
+    else if(data.type==='deleteTask'){url+='deletarTarefa&id='+encodeURIComponent(data.taskId);}
+    else if(data.type==='deleteStudent'){url+='deletarAluno&nome='+encodeURIComponent(data.studentName);}
+    if(payload) url+='&data='+payload;
+    const r=await fetch(url,{method:'GET'});
+    const d=await r.json();
+    return d.ok===true;
+  }catch(e){console.error('gsPost',e);return false;}
 }
 
 async function carregarDoSheets(){
