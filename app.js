@@ -58,6 +58,25 @@ let pinBuffer      = '';
 })();
 
 // ──────────────────────────────────────────
+//  PWA INSTALL
+// ──────────────────────────────────────────
+let deferredPrompt = null;
+
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredPrompt = e;
+  const btn = document.getElementById('installBtn');
+  if (btn) btn.style.display = 'block';
+});
+
+window.addEventListener('appinstalled', () => {
+  deferredPrompt = null;
+  const btn = document.getElementById('installBtn');
+  if (btn) btn.style.display = 'none';
+  toast('✅ App instalado com sucesso!');
+});
+
+// ──────────────────────────────────────────
 //  SPLASH → INIT
 // ──────────────────────────────────────────
 window.addEventListener('load', () => {
@@ -207,6 +226,18 @@ const App = {
     currentStudent = null;
     showScreen('screenLogin');
     document.getElementById('modeBtn').textContent = '🔒 Pais';
+  },
+
+  async installPWA() {
+    if (!deferredPrompt) {
+      toast('Abra o menu do navegador e toque em "Adicionar à tela inicial"');
+      return;
+    }
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') toast('🚀 Instalando...');
+    deferredPrompt = null;
+    document.getElementById('installBtn').style.display = 'none';
   },
 
   refreshChild() {
