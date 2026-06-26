@@ -344,6 +344,8 @@ body{background:#0d0820;min-height:100vh;font-family:'Nunito',sans-serif;color:v
               <option value="5">5</option>
               <option value="8" selected>8</option>
               <option value="10">10</option>
+              <option value="15">15</option>
+              <option value="20">20</option>
             </select>
           </div>
         </div>
@@ -599,7 +601,7 @@ async function doLogin(){
     if(rs&&rs.alunos) students=rs.alunos; else if(rs&&rs.ok===false) console.warn('gsGet alunos falhou');
   }
 
-  const student=students.find(s=>s.nome.toLowerCase()===name.toLowerCase()&&s.senha===pass);
+  const student=students.find(s=>s.nome.toLowerCase()===name.toLowerCase()&&String(s.senha)===String(pass));
 
   btn.innerHTML='🚀 Decolar!';
   btn.disabled=false;
