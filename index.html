@@ -425,7 +425,7 @@ body{background:#0d0820;min-height:100vh;font-family:'Nunito',sans-serif;color:v
 //  CONFIG — cole a URL do Google Apps Script aqui
 //  (pode também configurar no painel dos pais)
 // ═══════════════════════════════════════════════
-const GS_URL_FIXED = 'https://script.google.com/macros/s/AKfycbwxARwNfJxbi8gv_3tAotSwXegMt23AkEEBSr2-q5LdvQDIDcygXDEeP7o3WvSXzM74/exec';
+const GS_URL_FIXED = 'https://script.google.com/macros/s/AKfycby9E6-dpf69cA9yCNM9fwqEpCqSj64ZOGPjoq4LouVOxCE6uKA65uEwHwBrl8CXvOez/exec';
 
 // ═══════════════════════════════════════════════
 //  ESTADO
@@ -495,29 +495,44 @@ function setBadge(state,msg){
   b.textContent=msg;
 }
 
-async function gsGet(tipo){
+// JSONP — resolve CORS completamente
+function jsonp(url) {
+  return new Promise((resolve, reject) => {
+    const cbName = 'rgs_cb_' + Date.now();
+    const script = document.createElement('script');
+    const timer = setTimeout(() => {
+      delete window[cbName]; script.remove();
+      reject(new Error('timeout'));
+    }, 10000);
+    window[cbName] = (data) => {
+      clearTimeout(timer); delete window[cbName]; script.remove();
+      resolve(data);
+    };
+    script.src = url + (url.includes('?')?'&':'?') + 'callback=' + cbName;
+    script.onerror = () => { clearTimeout(timer); delete window[cbName]; script.remove(); reject(new Error('script error')); };
+    document.head.appendChild(script);
+  });
+}
+
+async function gsGet(acao, params=''){
   if(!GS_URL) return null;
   try{
-    const r=await fetch(GS_URL+'?type='+tipo,{method:'GET'});
-    const d=await r.json();
+    const d = await jsonp(GS_URL+'?action='+acao+(params?'&'+params:''));
     return d.ok ? d : null;
-  }catch(e){return null;}
+  }catch(e){console.error('gsGet',e);return null;}
 }
 
 async function gsPost(data){
   if(!GS_URL) return false;
   try{
-    let url=GS_URL+'?action=';
-    let payload='';
-    if(data.type==='student'){url+='salvarAluno';payload=encodeURIComponent(JSON.stringify(data.student));}
-    else if(data.type==='task'){url+='salvarTarefa';payload=encodeURIComponent(JSON.stringify(data.task));}
-    else if(data.type==='result'){url+='salvarResultado';payload=encodeURIComponent(JSON.stringify(data));}
-    else if(data.type==='deleteTask'){url+='deletarTarefa&id='+encodeURIComponent(data.taskId);}
-    else if(data.type==='deleteStudent'){url+='deletarAluno&nome='+encodeURIComponent(data.studentName);}
-    if(payload) url+='&data='+payload;
-    const r=await fetch(url,{method:'GET'});
-    const d=await r.json();
-    return d.ok===true;
+    let acao='', params='';
+    if(data.type==='student'){acao='salvarAluno';params='data='+encodeURIComponent(JSON.stringify(data.student));}
+    else if(data.type==='task'){acao='salvarTarefa';params='data='+encodeURIComponent(JSON.stringify(data.task));}
+    else if(data.type==='result'){acao='salvarResultado';params='data='+encodeURIComponent(JSON.stringify(data));}
+    else if(data.type==='deleteTask'){acao='deletarTarefa';params='id='+encodeURIComponent(data.taskId);}
+    else if(data.type==='deleteStudent'){acao='deletarAluno';params='nome='+encodeURIComponent(data.studentName);}
+    const d = await jsonp(GS_URL+'?action='+acao+'&'+params);
+    return d && d.ok===true;
   }catch(e){console.error('gsPost',e);return false;}
 }
 
@@ -526,13 +541,13 @@ async function carregarDoSheets(){
   setBadge('load','⏳ Sync...');
   showLoading('Carregando dados...');
   try{
-    const [rs,rt]=await Promise.all([gsGet('alunos'),gsGet('tarefas')]);
-    if(rs && rs.alunos)  students = rs.alunos;
-    if(rt && rt.tarefas) tasks    = rt.tarefas;
+    const d = await gsGet('tudo');
+    if(d && d.alunos)  students = d.alunos;
+    if(d && d.tarefas) tasks    = d.tarefas;
     setBadge('ok','✅ Online');
   }catch(e){
     setBadge('err','❌ Offline');
-    showToast('Sem conexão com Sheets. Verifique a URL.');
+    showToast('Sem conexão com Sheets.');
   }
   hideLoading();
 }
@@ -581,7 +596,7 @@ async function doLogin(){
   // Recarrega alunos do Sheets para garantir dados frescos
   if(GS_URL){
     const rs=await gsGet('alunos');
-    if(rs&&rs.alunos) students=rs.alunos;
+    if(rs&&rs.alunos) students=rs.alunos; else if(rs&&rs.ok===false) console.warn('gsGet alunos falhou');
   }
 
   const student=students.find(s=>s.nome.toLowerCase()===name.toLowerCase()&&s.senha===pass);
@@ -794,12 +809,9 @@ async function afterResult(){
   // Recarrega dados frescos do Sheets
   if(GS_URL){
     showLoading('Atualizando...');
-    const [rs,rt]=await Promise.all([gsGet('alunos'),gsGet('tarefas')]);
-    if(rs&&rs.alunos){
-      students=rs.alunos;
-      currentStudent=students.find(s=>(s.nome||s.name).toLowerCase()===(currentStudent.nome||currentStudent.name).toLowerCase())||currentStudent;
-    }
-    if(rt&&rt.tarefas) tasks=rt.tarefas;
+    const dR=await gsGet('tudo');
+    if(dR&&dR.alunos){students=dR.alunos;currentStudent=students.find(s=>norm(s.nome||s.name)===norm(currentStudent.nome||currentStudent.name))||currentStudent;}
+    if(dR&&dR.tarefas) tasks=dR.tarefas;
     hideLoading();
   }
   refreshChild();
@@ -829,9 +841,9 @@ async function enterParent(){
   // Recarrega tudo do Sheets
   if(GS_URL){
     showLoading('Carregando painel...');
-    const [rs,rt]=await Promise.all([gsGet('alunos'),gsGet('tarefas')]);
-    if(rs&&rs.alunos) students=rs.alunos;
-    if(rt&&rt.tarefas) tasks=rt.tarefas;
+    const dP=await gsGet('tudo');
+    if(dP&&dP.alunos) students=dP.alunos;
+    if(dP&&dP.tarefas) tasks=dP.tarefas;
     hideLoading();
   }
   loadParentTargetSelect();
