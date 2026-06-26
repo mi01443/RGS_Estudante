@@ -286,22 +286,33 @@ const App = {
 
     const area = document.getElementById('optionsArea');
     if (q.options && q.options.length) {
-      area.innerHTML = `<div class="options-grid">${q.options.map(opt =>
-        `<button class="opt-btn" onclick="App.selectOpt(this,${JSON.stringify(opt)},${JSON.stringify(q.answer)})">${opt}</button>`
-      ).join('')}</div>`;
+      area.innerHTML = `<div class="options-grid">${q.options.map((opt, i) => {
+        const safe = opt.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+        return `<button class="opt-btn" data-opt="${safe}" data-ans="${q.answer.replace(/"/g,'&quot;').replace(/'/g,'&#39;')}" onclick="App.selectOpt(this)">${opt}</button>`;
+      }).join('')}</div>`;
     } else {
       area.innerHTML = `<textarea class="open-ans" id="openAns" rows="3" placeholder="Escreva sua resposta..."></textarea>
         <button class="btn primary block" onclick="App.submitOpen()">Confirmar ✓</button>`;
     }
   },
 
-  selectOpt(btn, selected, answer) {
+  selectOpt(btn) {
+    const selected = btn.dataset.opt;
+    const answer   = btn.dataset.ans;
     document.querySelectorAll('.opt-btn').forEach(b => b.disabled = true);
-    const ok = selected.trim().toLowerCase() === answer.trim().toLowerCase();
+    // Compara só a letra da alternativa (A, B, C, D) para ser mais tolerante
+    const letra = s => (s || '').trim().charAt(0).toUpperCase();
+    const ok = letra(selected) === letra(answer) || selected.trim().toLowerCase() === answer.trim().toLowerCase();
     btn.classList.add(ok ? 'correct' : 'wrong');
-    if (!ok) document.querySelectorAll('.opt-btn').forEach(b => {
-      if (b.textContent.trim().toLowerCase() === answer.trim().toLowerCase()) b.classList.add('correct');
-    });
+    if (!ok) {
+      document.querySelectorAll('.opt-btn').forEach(b => {
+        const bLetra = letra(b.dataset.opt);
+        const aLetra = letra(answer);
+        if (bLetra === aLetra || b.dataset.opt.trim().toLowerCase() === answer.trim().toLowerCase()) {
+          b.classList.add('correct');
+        }
+      });
+    }
     this.showFeedback(ok, answer);
     if (ok) correctCount++;
     document.getElementById('nextBtn').classList.add('visible');
@@ -573,17 +584,17 @@ const Parent = {
     btn.disabled = true; btn.innerHTML = '<div class="spinner sm"></div> Gerando com IA...';
     document.getElementById('previewBox').classList.remove('show');
 
-    const prompt = `Você é um professor criativo e didático. Crie ${qty} questões de múltipla escolha sobre "${tema}" (matéria: ${subject}, nível de dificuldade: ${diff}) para uma criança do ensino fundamental brasileiro.
+    const prompt = `Você é um professor criativo. Crie ${qty} questões de múltipla escolha sobre "${tema}" para crianças do ensino fundamental. Matéria: ${subject}. Dificuldade: ${diff}.
 
-Responda APENAS com JSON válido neste formato exato, sem texto antes ou depois:
-{"title":"Nome curto e animado da missão (max 5 palavras)","questions":[{"question":"Texto da pergunta clara e objetiva","options":["A) opção1","B) opção2","C) opção3","D) opção4"],"answer":"A) opção1"}]}
+IMPORTANTE: Responda SOMENTE com o JSON abaixo, sem nenhum texto antes ou depois, sem markdown, sem \`\`\`:
 
-Regras importantes:
-- Linguagem simples e amigável para crianças
-- Sempre 4 opções por questão
-- A resposta correta DEVE estar presente nas opções
-- Questões variadas e educativas sobre o tema
-- Apenas o JSON, sem markdown, sem explicações`;
+{"title":"Nome da missão","questions":[{"question":"Pergunta aqui?","options":["A) texto","B) texto","C) texto","D) texto"],"answer":"A) texto"}]}
+
+REGRAS OBRIGATÓRIAS:
+1. O campo "answer" deve ser EXATAMENTE IGUAL a uma das opções em "options"
+2. Sempre 4 opções: A), B), C), D)
+3. Linguagem simples para crianças
+4. Retorne APENAS o JSON, nada mais`;
 
     try {
       // Groq API — gratuito e rápido
