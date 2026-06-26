@@ -7,9 +7,8 @@
 //  CONFIGURAÇÕES FIXAS
 // ──────────────────────────────────────────
 const GS_URL_DEFAULT = 'https://script.google.com/macros/s/AKfycby9E6-dpf69cA9yCNM9fwqEpCqSj64ZOGPjoq4LouVOxCE6uKA65uEwHwBrl8CXvOez/exec';
-const GEMINI_KEY     = 'AQ.Ab8RN6Lc7heUfMlyrLUzzrRhARfSSBallCjJWQPvSgFlPD6oLg';
-const GEMINI_URL     = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
-const GEMINI_URL_V1  = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent';
+const GROQ_KEY = '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';
+const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
 
 // ──────────────────────────────────────────
 //  ESTADO GLOBAL
@@ -587,20 +586,22 @@ Regras importantes:
 - Apenas o JSON, sem markdown, sem explicações`;
 
     try {
-      // Tenta Gemini — chave na URL
-      const body = JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.7, maxOutputTokens: 3000 } });
-      let data;
-      // Tenta v1beta primeiro, depois v1 como fallback
-      for (const url of [GEMINI_URL, GEMINI_URL_V1]) {
-        const r = await fetch(url + '?key=' + GEMINI_KEY, { method:'POST', headers:{'Content-Type':'application/json'}, body });
-        data = await r.json();
-        console.log('Gemini [' + url.includes('v1beta') + ']:', JSON.stringify(data).slice(0, 400));
-        if (!data.error) break;
-        console.warn('Tentando próxima URL...');
-      }
+      // Groq API — gratuito e rápido
+      const res = await fetch(GROQ_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + GROQ_KEY },
+        body: JSON.stringify({
+          model: 'llama-3.3-70b-versatile',
+          messages: [{ role: 'user', content: prompt }],
+          temperature: 0.7,
+          max_tokens: 3000
+        })
+      });
+      const data = await res.json();
+      console.log('Groq response:', JSON.stringify(data).slice(0, 300));
       if (data.error) throw new Error(data.error.message || JSON.stringify(data.error));
-      if (!data.candidates || !data.candidates.length) throw new Error('Sem candidatos: ' + JSON.stringify(data));
-      const text = data.candidates[0].content.parts[0].text;
+      if (!data.choices || !data.choices.length) throw new Error('Sem resposta: ' + JSON.stringify(data));
+      const text = data.choices[0].message.content;
       console.log('Gemini text:', text.slice(0, 200));
       // Limpa possível markdown
       const clean = text.replace(/```json|```/g, '').trim();
