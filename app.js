@@ -77,6 +77,144 @@ window.addEventListener('appinstalled', () => {
 });
 
 // ──────────────────────────────────────────
+//  SONS — Web Audio API (sem arquivos externos)
+// ──────────────────────────────────────────
+const SFX = (() => {
+  let ctx = null;
+  function getCtx() {
+    if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)();
+    return ctx;
+  }
+
+  function play(notes, type = 'sine', vol = 0.3) {
+    try {
+      const c = getCtx();
+      notes.forEach(([freq, start, dur, endFreq]) => {
+        const osc  = c.createOscillator();
+        const gain = c.createGain();
+        osc.connect(gain); gain.connect(c.destination);
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, c.currentTime + start);
+        if (endFreq) osc.frequency.linearRampToValueAtTime(endFreq, c.currentTime + start + dur);
+        gain.gain.setValueAtTime(vol, c.currentTime + start);
+        gain.gain.exponentialRampToValueAtTime(0.001, c.currentTime + start + dur);
+        osc.start(c.currentTime + start);
+        osc.stop(c.currentTime + start + dur + 0.05);
+      });
+    } catch(e) { console.warn('SFX error', e); }
+  }
+
+  return {
+    // ✅ Resposta correta — som alegre ascendente
+    correct() {
+      play([
+        [523, 0.00, 0.12],   // C5
+        [659, 0.10, 0.12],   // E5
+        [784, 0.20, 0.20],   // G5
+        [1047,0.32, 0.30],   // C6
+      ], 'sine', 0.25);
+    },
+
+    // ❌ Resposta errada — som descendente triste
+    wrong() {
+      play([
+        [300, 0.00, 0.18, 200],
+        [220, 0.15, 0.30, 150],
+      ], 'sawtooth', 0.15);
+    },
+
+    // 🏆 Missão excelente (nota >= 8)
+    victory() {
+      play([
+        [523, 0.00, 0.12], [659, 0.10, 0.12], [784, 0.20, 0.12],
+        [1047,0.30, 0.12], [1319,0.40, 0.12], [1568,0.50, 0.25],
+        [1319,0.70, 0.10], [1568,0.80, 0.40],
+      ], 'sine', 0.2);
+      // Harmônico extra
+      setTimeout(() => play([[784,0,0.6],[1047,0,0.6]], 'triangle', 0.1), 900);
+    },
+
+    // 😅 Missão ruim (nota < 5)
+    fail() {
+      play([
+        [400, 0.00, 0.25, 300],
+        [300, 0.22, 0.25, 200],
+        [200, 0.44, 0.40, 150],
+      ], 'sawtooth', 0.15);
+    },
+
+    // ⭐ Regular (nota 5-7)
+    ok() {
+      play([
+        [440, 0.00, 0.15],
+        [554, 0.13, 0.15],
+        [659, 0.26, 0.25],
+      ], 'sine', 0.2);
+    },
+
+    // 🎉 Subiu de nível!
+    levelUp() {
+      play([
+        [523, 0.00, 0.10], [784, 0.08, 0.10], [1047,0.16, 0.10],
+        [1319,0.24, 0.10], [1047,0.34, 0.10], [1319,0.42, 0.10],
+        [1568,0.50, 0.40],
+      ], 'sine', 0.22);
+    },
+
+    // 🖱️ Click suave
+    click() {
+      play([[880, 0, 0.06]], 'sine', 0.1);
+    }
+  };
+})();
+
+// ──────────────────────────────────────────
+//  XP PROGRESSIVO POR NÍVEL
+// ──────────────────────────────────────────
+// XP necessário para passar do nível N para N+1
+const XP_TABLE = [
+  0,    // dummy (nível começa em 1)
+  100,  // nível 1 → 2
+  250,  // nível 2 → 3
+  450,  // nível 3 → 4
+  700,  // nível 4 → 5
+  1000, // nível 5 → 6
+  1350, // nível 6 → 7
+  1750, // nível 7 → 8
+  2200, // nível 8 → 9
+  2700, // nível 9 → 10
+  3300, // nível 10 → 11
+  4000, // nível 11 → 12
+  4800, // nível 12 → 13
+  5700, // nível 13 → 14
+  6700, // nível 14 → 15
+  7800, // nível 15 → 16
+  9000, // nível 16 → 17
+  10300,// nível 17 → 18
+  11700,// nível 18 → 19
+  13200,// nível 19 → 20
+];
+
+// XP total acumulado para chegar ao nível N
+function xpParaNivel(n) {
+  let total = 0;
+  for (let i = 1; i < Math.min(n, XP_TABLE.length); i++) total += XP_TABLE[i];
+  return total;
+}
+
+// Dado XP total, retorna {nivel, xpNoNivel, xpParaProximo}
+function calcNivel(xpTotal) {
+  let nivel = 1, acum = 0;
+  for (let i = 1; i < XP_TABLE.length; i++) {
+    if (acum + XP_TABLE[i] > xpTotal) {
+      return { nivel, xpNoNivel: xpTotal - acum, xpParaProximo: XP_TABLE[i] };
+    }
+    acum += XP_TABLE[i]; nivel++;
+  }
+  return { nivel, xpNoNivel: 0, xpParaProximo: XP_TABLE[XP_TABLE.length-1] };
+}
+
+// ──────────────────────────────────────────
 //  SPLASH → INIT
 // ──────────────────────────────────────────
 window.addEventListener('load', () => {
@@ -243,11 +381,13 @@ const App = {
   refreshChild() {
     if (!currentStudent) return;
     const s = currentStudent;
-    const xp = s.xp || 0, lvl = Math.floor(xp / 100) + 1, inLvl = xp % 100;
+    const xp = s.xp || 0;
+    const { nivel: lvl, xpNoNivel, xpParaProximo } = calcNivel(xp);
+    const pct = Math.min(100, Math.round(xpNoNivel / xpParaProximo * 100));
     document.getElementById('heroName').textContent   = s.nome + '!';
     document.getElementById('childLevel').textContent  = lvl;
-    document.getElementById('xpDisplay').textContent   = `${inLvl}/100 XP`;
-    document.getElementById('xpFill').style.width      = (inLvl) + '%';
+    document.getElementById('xpDisplay').textContent   = `${xpNoNivel}/${xpParaProximo} XP`;
+    document.getElementById('xpFill').style.width      = pct + '%';
     document.getElementById('statMissoes').textContent  = s.missoes || 0;
     document.getElementById('statStars').textContent    = '⭐' + (s.estrelas || 0);
     const notas = s.notas || [];
@@ -340,6 +480,7 @@ const App = {
         if (norm(b.dataset.opt) === norm(answer)) b.classList.add('correct');
       });
     }
+    if (ok) SFX.correct(); else SFX.wrong();
     this.showFeedback(ok, answer);
     if (ok) correctCount++;
     document.getElementById('nextBtn').classList.add('visible');
@@ -350,6 +491,7 @@ const App = {
     if (!ans) { toast('Escreva sua resposta!'); return; }
     const q  = currentTask.questions[currentQIdx];
     const ok = ans.toLowerCase().includes(q.answer.toLowerCase()) || q.answer.toLowerCase().includes(ans.toLowerCase());
+    if (ok) SFX.correct(); else SFX.wrong();
     this.showFeedback(ok, q.answer);
     if (ok) correctCount++;
     document.getElementById('openAns').disabled = true;
@@ -375,14 +517,28 @@ const App = {
     const xpEarned = Math.round(currentTask.xp * (correctCount / total));
     const stars    = grade >= 9 ? 3 : grade >= 7 ? 2 : grade >= 5 ? 1 : 0;
 
+    // XP progressivo — calcula nível antes e depois
+    const xpAntes  = +(currentStudent.xp) || 0;
+    const xpDepois = xpAntes + xpEarned;
+    const nivAntes = calcNivel(xpAntes).nivel;
+    const nivDepois= calcNivel(xpDepois).nivel;
+    const subiuNivel = nivDepois > nivAntes;
+
     currentTask.done = true; currentTask.score = grade;
     currentTask.xpEarned = xpEarned; currentTask.doneBy = currentStudent.nome;
 
-    currentStudent.xp       = (+(currentStudent.xp) || 0) + xpEarned;
+    currentStudent.xp       = xpDepois;
+    currentStudent.nivel    = nivDepois;
     currentStudent.missoes  = (+(currentStudent.missoes) || 0) + 1;
     currentStudent.estrelas = (+(currentStudent.estrelas) || 0) + stars;
     if (!currentStudent.notas) currentStudent.notas = [];
     currentStudent.notas.push(grade);
+
+    // 🔊 Som de encerramento
+    if      (grade >= 8) setTimeout(() => SFX.victory(), 400);
+    else if (grade >= 5) setTimeout(() => SFX.ok(),      400);
+    else                 setTimeout(() => SFX.fail(),    400);
+    if (subiuNivel)      setTimeout(() => SFX.levelUp(), 1800);
 
     showLoad('Salvando resultado...');
     await gsCall('salvarResultado', 'data=' + encodeURIComponent(JSON.stringify({
@@ -393,6 +549,8 @@ const App = {
 
     const trophies = { 3: '🏆', 2: '🥈', 1: '🥉', 0: '😅' };
     const titles   = { 3: 'Lendário!', 2: 'Incrível!', 1: 'Bom trabalho!', 0: 'Continue tentando!' };
+    const { xpNoNivel, xpParaProximo } = calcNivel(xpDepois);
+
     document.getElementById('resTrophy').textContent  = trophies[stars] || '🎖️';
     document.getElementById('resTitle').textContent   = titles[stars]   || 'Concluído!';
     document.getElementById('resSub').textContent     = currentStudent.nome + ', missão concluída!';
@@ -400,10 +558,12 @@ const App = {
     document.getElementById('resCorrect').textContent = correctCount;
     document.getElementById('resWrong').textContent   = total - correctCount;
     document.getElementById('resGrade').textContent   = grade;
-    document.getElementById('resXp').textContent      = `+${xpEarned} XP! ${'⭐'.repeat(stars)}`;
+    document.getElementById('resXp').textContent      =
+      `+${xpEarned} XP ${'⭐'.repeat(stars)}${subiuNivel ? ' 🎉 NÍVEL ' + nivDepois + '!' : ''}`;
     showScreen('screenResult');
     spawnXpPop(xpEarned);
     if (stars >= 2) launchConfetti();
+    if (subiuNivel) setTimeout(() => spawnLevelUp(nivDepois), 1600);
   },
 
   async afterResult() {
@@ -802,6 +962,21 @@ function spawnXpPop(xp) {
   const el = document.createElement('div'); el.className = 'xp-pop';
   el.textContent = `+${xp} XP!`; document.body.appendChild(el);
   setTimeout(() => el.remove(), 1200);
+}
+
+function spawnLevelUp(nivel) {
+  const el = document.createElement('div');
+  el.style.cssText = `position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
+    background:linear-gradient(135deg,#b06eff,#FFD700);border-radius:24px;
+    padding:1.5rem 2rem;text-align:center;z-index:600;
+    font-family:'Fredoka One';color:white;
+    animation:levelUpAnim 2.5s ease forwards;pointer-events:none;
+    box-shadow:0 0 60px rgba(176,110,255,0.8)`;
+  el.innerHTML = `<div style="font-size:2.5rem">🎉</div>
+    <div style="font-size:1.8rem;margin-top:4px">NÍVEL ${nivel}!</div>
+    <div style="font-size:1rem;opacity:0.9;margin-top:4px">Você subiu de nível!</div>`;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 2600);
 }
 
 function launchConfetti() {
