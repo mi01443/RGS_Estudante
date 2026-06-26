@@ -6,7 +6,7 @@
 // ──────────────────────────────────────────
 //  CONFIGURAÇÕES FIXAS
 // ──────────────────────────────────────────
-const GS_URL_DEFAULT = 'https://script.google.com/macros/s/AKfycbxvFxmC5_zWMsGa9QaGRkug58O81MhZ-DTHuXFE1EU9lJH2x61XuIpBp4S7IMw2_W3d/exec';
+const GS_URL_DEFAULT = 'https://script.google.com/macros/s/AKfycby9E6-dpf69cA9yCNM9fwqEpCqSj64ZOGPjoq4LouVOxCE6uKA65uEwHwBrl8CXvOez/exec';
 const GEMINI_KEY     = 'AQ.Ab8RN6Lc7heUfMlyrLUzzrRhARfSSBallCjJWQPvSgFlPD6oLg';
 const GEMINI_URL     = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
 
