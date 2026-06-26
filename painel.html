@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RGS Estudante — Painel dos Pais</title>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--gold:#FFD700;--pink:#ff6eb4;--blue:#64c8ff;--purple:#b06eff;--red:#ff4757;--orange:#ff8c42;--neon:#39ff14;--bg:#0d0820;--card:rgba(255,255,255,0.07);--card2:rgba(255,255,255,0.12);--border:rgba(255,255,255,0.12);--text:#f0e6ff;--muted:rgba(255,255,255,0.5)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);font-family:'Nunito',sans-serif;color:var(--text);min-height:100vh}
+body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse at 20% 20%,rgba(176,110,255,0.15) 0%,transparent 60%),radial-gradient(ellipse at 80% 80%,rgba(100,200,255,0.1) 0%,transparent 60%);pointer-events:none;z-index:0}
+
+/* LOGIN */
+#loginPage{position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;background:radial-gradient(ellipse at 50% 40%,#2d1b69,#0d0820 70%)}
+.login-box{background:rgba(255,255,255,0.07);border:1px solid rgba(176,110,255,0.3);border-radius:24px;padding:2.5rem;width:100%;max-width:360px;text-align:center}
+.login-logo{font-family:'Fredoka One';font-size:2rem;color:var(--gold);margin-bottom:4px}
+.login-logo span{color:var(--pink)}
+.login-sub{font-size:0.85rem;color:var(--muted);margin-bottom:2rem}
+.pin-dots{display:flex;gap:12px;justify-content:center;margin-bottom:1.5rem}
+.pin-dot{width:16px;height:16px;border-radius:50%;border:2px solid var(--purple);transition:all 0.2s}
+.pin-dot.filled{background:var(--purple);border-color:var(--purple);transform:scale(1.1)}
+.numpad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:1rem}
+.num-btn{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:1rem;font-family:'Fredoka One';font-size:1.3rem;color:var(--text);cursor:pointer;transition:all 0.15s}
+.num-btn:hover{background:var(--card2);border-color:var(--purple)}
+.num-btn:active{transform:scale(0.94)}
+.del-btn{background:rgba(255,71,87,0.15);border-color:rgba(255,71,87,0.3);color:var(--red)}
+.enter-btn{background:linear-gradient(135deg,var(--purple),var(--pink));border:none;border-radius:14px;padding:0.85rem;font-family:'Fredoka One';font-size:1rem;color:white;width:100%;cursor:pointer;transition:all 0.2s}
+.enter-btn:hover{opacity:0.9;transform:scale(1.02)}
+.pin-error{color:var(--red);font-size:0.82rem;margin-top:0.5rem;min-height:20px}
+
+/* LAYOUT */
+.layout{display:flex;min-height:100vh;position:relative;z-index:1}
+
+/* SIDEBAR */
+.sidebar{width:240px;min-height:100vh;background:rgba(0,0,0,0.3);border-right:1px solid var(--border);padding:1.5rem 1rem;position:fixed;top:0;left:0;bottom:0;display:flex;flex-direction:column}
+.sidebar-logo{font-family:'Fredoka One';font-size:1.4rem;color:var(--gold);margin-bottom:4px}
+.sidebar-logo span{color:var(--pink)}
+.sidebar-sub{font-size:0.7rem;color:var(--muted);letter-spacing:2px;margin-bottom:2rem}
+.nav-item{display:flex;align-items:center;gap:10px;padding:0.7rem 0.9rem;border-radius:12px;cursor:pointer;transition:all 0.2s;font-weight:700;font-size:0.88rem;margin-bottom:4px;color:var(--muted)}
+.nav-item:hover{background:var(--card);color:var(--text)}
+.nav-item.active{background:rgba(176,110,255,0.2);color:var(--purple);border:1px solid rgba(176,110,255,0.3)}
+.nav-icon{font-size:1.1rem;width:20px;text-align:center}
+.sidebar-footer{margin-top:auto;padding-top:1rem;border-top:1px solid var(--border)}
+.gs-pill{display:inline-flex;align-items:center;gap:6px;font-size:0.72rem;font-weight:800;padding:5px 12px;border-radius:20px}
+.gs-ok{background:rgba(57,255,20,0.15);color:var(--neon);border:1px solid rgba(57,255,20,0.3)}
+.gs-err{background:rgba(255,71,87,0.15);color:var(--red);border:1px solid rgba(255,71,87,0.3)}
+.gs-load{background:rgba(255,215,0,0.15);color:var(--gold);border:1px solid rgba(255,215,0,0.3)}
+.logout-btn{width:100%;margin-top:0.75rem;background:rgba(255,71,87,0.15);border:1px solid rgba(255,71,87,0.25);border-radius:10px;padding:0.55rem;font-family:'Nunito';font-weight:800;font-size:0.8rem;color:var(--red);cursor:pointer;transition:all 0.2s}
+.logout-btn:hover{background:rgba(255,71,87,0.3)}
+
+/* MAIN */
+.main{margin-left:240px;padding:2rem;flex:1}
+.page{display:none}.page.active{display:block}
+.page-title{font-family:'Fredoka One';font-size:1.8rem;color:var(--gold);margin-bottom:0.25rem}
+.page-sub{font-size:0.85rem;color:var(--muted);margin-bottom:1.75rem}
+
+/* CARDS */
+.kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:1rem;margin-bottom:1.75rem}
+.kpi{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:1.25rem}
+.kpi-num{font-family:'Fredoka One';font-size:2rem;color:var(--gold)}
+.kpi-lbl{font-size:0.75rem;color:var(--muted);margin-top:2px}
+.kpi-icon{font-size:1.4rem;margin-bottom:0.25rem}
+
+/* TABLE */
+.table-card{background:var(--card);border:1px solid var(--border);border-radius:18px;overflow:hidden;margin-bottom:1.5rem}
+.table-head{padding:1rem 1.25rem;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border)}
+.table-title{font-family:'Fredoka One';font-size:1rem;color:var(--blue)}
+table{width:100%;border-collapse:collapse}
+th{padding:0.75rem 1rem;text-align:left;font-size:0.75rem;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;background:rgba(0,0,0,0.2)}
+td{padding:0.75rem 1rem;font-size:0.85rem;border-top:1px solid rgba(255,255,255,0.05)}
+tr:hover td{background:rgba(255,255,255,0.03)}
+.avatar{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--purple),var(--pink));display:inline-flex;align-items:center;justify-content:center;font-family:'Fredoka One';font-size:0.85rem;vertical-align:middle;margin-right:8px}
+.badge{display:inline-block;font-size:0.68rem;font-weight:800;padding:3px 9px;border-radius:20px}
+.b-ok{background:rgba(57,255,20,0.15);color:var(--neon);border:1px solid rgba(57,255,20,0.3)}
+.b-pend{background:rgba(255,215,0,0.15);color:var(--gold);border:1px solid rgba(255,215,0,0.3)}
+.b-err{background:rgba(255,71,87,0.15);color:var(--red);border:1px solid rgba(255,71,87,0.3)}
+.b-subj{background:rgba(100,200,255,0.15);color:var(--blue);border:1px solid rgba(100,200,255,0.3)}
+.b-diff{background:rgba(255,140,66,0.15);color:var(--orange);border:1px solid rgba(255,140,66,0.3)}
+.stars{color:var(--gold)}
+.del-icon{background:rgba(255,71,87,0.15);border:1px solid rgba(255,71,87,0.25);border-radius:8px;padding:4px 9px;cursor:pointer;font-size:0.75rem;color:var(--red);font-family:'Nunito';font-weight:800;transition:all 0.2s}
+.del-icon:hover{background:rgba(255,71,87,0.3)}
+
+/* FORM */
+.form-card{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:1.5rem;margin-bottom:1.5rem}
+.form-card-title{font-family:'Fredoka One';font-size:1.05rem;color:var(--gold);margin-bottom:1rem}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+.form-full{grid-column:1/-1}
+label{font-size:0.78rem;font-weight:800;color:var(--blue);display:block;margin-bottom:5px}
+input,select,textarea{width:100%;background:rgba(255,255,255,0.07);border:1.5px solid var(--border);border-radius:12px;padding:0.65rem 0.9rem;font-family:'Nunito';font-size:0.9rem;color:var(--text);outline:none;transition:border 0.2s;margin-bottom:0.85rem}
+input:focus,select:focus,textarea:focus{border-color:var(--purple)}
+select option{background:#1a0533}
+.btn{border:none;border-radius:12px;padding:0.75rem 1.5rem;font-family:'Fredoka One';font-size:0.95rem;cursor:pointer;transition:all 0.2s;display:inline-flex;align-items:center;gap:6px}
+.btn:hover{transform:scale(1.02);opacity:0.92}
+.btn-primary{background:linear-gradient(135deg,var(--purple),var(--pink));color:white}
+.btn-success{background:linear-gradient(135deg,var(--neon),#00cc44);color:#0a3300}
+.btn-danger{background:linear-gradient(135deg,var(--red),#cc2233);color:white}
+.btn-orange{background:linear-gradient(135deg,var(--orange),var(--red));color:white}
+.btn-block{width:100%;justify-content:center}
+.btn:disabled{opacity:0.5;cursor:default;transform:none}
+.tip{background:rgba(100,200,255,0.07);border:1px solid rgba(100,200,255,0.2);border-radius:10px;padding:0.65rem;font-size:0.78rem;color:var(--blue);line-height:1.5;margin-bottom:0.85rem}
+.preview-box{background:rgba(57,255,20,0.05);border:1px solid rgba(57,255,20,0.2);border-radius:12px;padding:1rem;margin-top:0.75rem;display:none}
+.preview-box.show{display:block}
+.preview-ttl{font-size:0.75rem;font-weight:800;color:var(--neon);margin-bottom:6px}
+.preview-q{font-size:0.82rem;margin-bottom:4px;opacity:0.85}
+
+/* TOAST */
+.toast{position:fixed;bottom:1.5rem;right:1.5rem;background:rgba(20,8,50,0.97);border:1px solid rgba(176,110,255,0.4);border-radius:14px;padding:0.75rem 1.25rem;font-weight:800;font-size:0.85rem;z-index:500;opacity:0;transition:opacity 0.3s;pointer-events:none;max-width:300px}
+.toast.show{opacity:1}
+
+/* LOADING */
+.overlay{position:fixed;inset:0;background:rgba(13,8,32,0.8);z-index:200;display:none;align-items:center;justify-content:center;flex-direction:column;gap:1rem}
+.overlay.show{display:flex}
+.spinner{width:40px;height:40px;border:4px solid rgba(255,255,255,0.15);border-top-color:var(--purple);border-radius:50%;animation:spin 0.7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.spinner-sm{width:18px;height:18px;border-width:3px;display:inline-block;vertical-align:middle}
+.overlay-msg{font-family:'Fredoka One';font-size:1.1rem;color:var(--gold)}
+
+/* MOBILE */
+@media(max-width:700px){
+  .sidebar{width:100%;min-height:auto;position:relative;border-right:none;border-bottom:1px solid var(--border);padding:1rem;flex-direction:row;align-items:center;gap:0.5rem;flex-wrap:wrap}
+  .main{margin-left:0}
+  .form-grid{grid-template-columns:1fr}
+  .kpi-row{grid-template-columns:1fr 1fr}
+}
+
+/* CHART BAR */
+.bar-wrap{display:flex;align-items:center;gap:8px}
+.bar-track{flex:1;background:rgba(255,255,255,0.1);border-radius:20px;height:8px;overflow:hidden}
+.bar-fill{height:100%;border-radius:20px;background:linear-gradient(90deg,var(--purple),var(--pink))}
+.nota-num{font-family:'Fredoka One';font-size:0.95rem;min-width:28px;text-align:right}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="loginPage">
+  <div class="login-box">
+    <div class="login-logo">RGS<span> Est.</span> 🚀</div>
+    <div class="login-sub">PAINEL DOS PAIS</div>
+    <div class="pin-dots">
+      <div class="pin-dot" id="d0"></div>
+      <div class="pin-dot" id="d1"></div>
+      <div class="pin-dot" id="d2"></div>
+      <div class="pin-dot" id="d3"></div>
+    </div>
+    <div class="numpad">
+      <button class="num-btn" onclick="addDigit('1')">1</button>
+      <button class="num-btn" onclick="addDigit('2')">2</button>
+      <button class="num-btn" onclick="addDigit('3')">3</button>
+      <button class="num-btn" onclick="addDigit('4')">4</button>
+      <button class="num-btn" onclick="addDigit('5')">5</button>
+      <button class="num-btn" onclick="addDigit('6')">6</button>
+      <button class="num-btn" onclick="addDigit('7')">7</button>
+      <button class="num-btn" onclick="addDigit('8')">8</button>
+      <button class="num-btn" onclick="addDigit('9')">9</button>
+      <button class="num-btn del-btn" onclick="delDigit()">⌫</button>
+      <button class="num-btn" onclick="addDigit('0')">0</button>
+      <button class="num-btn" onclick="checkPin()" style="background:linear-gradient(135deg,var(--purple),var(--pink));border:none;color:white">✓</button>
+    </div>
+    <div class="pin-error" id="pinErr"></div>
+  </div>
+</div>
+
+<!-- LOADING -->
+<div class="overlay" id="overlay">
+  <div class="spinner"></div>
+  <div class="overlay-msg" id="overlayMsg">Carregando...</div>
+</div>
+<div class="toast" id="toast"></div>
+
+<!-- APP -->
+<div class="layout" id="app" style="display:none">
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div>
+      <div class="sidebar-logo">RGS<span> Est.</span> 🚀</div>
+      <div class="sidebar-sub">PAINEL DOS PAIS</div>
+    </div>
+    <nav>
+      <div class="nav-item active" onclick="goPage('pgDash')" id="nav-pgDash"><span class="nav-icon">📊</span> Dashboard</div>
+      <div class="nav-item" onclick="goPage('pgAlunos')" id="nav-pgAlunos"><span class="nav-icon">👦</span> Alunos</div>
+      <div class="nav-item" onclick="goPage('pgMissoes')" id="nav-pgMissoes"><span class="nav-icon">🎯</span> Missões</div>
+      <div class="nav-item" onclick="goPage('pgResultados')" id="nav-pgResultados"><span class="nav-icon">📋</span> Resultados</div>
+      <div class="nav-item" onclick="goPage('pgConfig')" id="nav-pgConfig"><span class="nav-icon">⚙️</span> Config</div>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="gs-pill gs-load" id="gsBadge">⏳ Conectando...</div>
+      <button class="logout-btn" onclick="logout()">🚪 Sair</button>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main">
+
+    <!-- DASHBOARD -->
+    <div class="page active" id="pgDash">
+      <div class="page-title">Dashboard 📊</div>
+      <div class="page-sub">Visão geral do aprendizado</div>
+      <div class="kpi-row">
+        <div class="kpi"><div class="kpi-icon">👦</div><div class="kpi-num" id="kAlunos">0</div><div class="kpi-lbl">Alunos cadastrados</div></div>
+        <div class="kpi"><div class="kpi-icon">🎯</div><div class="kpi-num" id="kMissoes">0</div><div class="kpi-lbl">Missões criadas</div></div>
+        <div class="kpi"><div class="kpi-icon">✅</div><div class="kpi-num" id="kConcluidas">0</div><div class="kpi-lbl">Missões concluídas</div></div>
+        <div class="kpi"><div class="kpi-icon">⭐</div><div class="kpi-num" id="kMedia">-</div><div class="kpi-lbl">Nota média geral</div></div>
+      </div>
+      <div class="table-card">
+        <div class="table-head"><div class="table-title">🏆 Ranking dos Exploradores</div></div>
+        <table>
+          <thead><tr><th>#</th><th>Aluno</th><th>Nível</th><th>XP</th><th>Missões</th><th>Nota Média</th><th>Estrelas</th></tr></thead>
+          <tbody id="rankingBody"></tbody>
+        </table>
+      </div>
+      <div class="table-card">
+        <div class="table-head"><div class="table-title">📋 Últimas Missões</div></div>
+        <table>
+          <thead><tr><th>Missão</th><th>Matéria</th><th>Para</th><th>Status</th></tr></thead>
+          <tbody id="recentMissoes"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ALUNOS -->
+    <div class="page" id="pgAlunos">
+      <div class="page-title">Alunos 👦</div>
+      <div class="page-sub">Cadastre e acompanhe cada explorador</div>
+      <div class="form-card">
+        <div class="form-card-title">➕ Novo Aluno</div>
+        <div class="form-grid">
+          <div>
+            <label>Nome do aluno</label>
+            <input id="novoNome" placeholder="Ex: João">
+          </div>
+          <div>
+            <label>Senha (só números)</label>
+            <input id="novaSenha" type="password" placeholder="Ex: 1234" maxlength="6" inputmode="numeric">
+          </div>
+        </div>
+        <button class="btn btn-primary" onclick="addAluno()">➕ Cadastrar Aluno</button>
+      </div>
+      <div class="table-card">
+        <div class="table-head"><div class="table-title">👥 Alunos Cadastrados</div><button class="btn btn-primary" style="padding:6px 14px;font-size:0.8rem" onclick="recarregar()">🔄 Atualizar</button></div>
+        <table>
+          <thead><tr><th>Nome</th><th>Nível</th><th>XP</th><th>Missões</th><th>Nota Média</th><th>Estrelas</th><th></th></tr></thead>
+          <tbody id="alunosBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- MISSÕES -->
+    <div class="page" id="pgMissoes">
+      <div class="page-title">Missões 🎯</div>
+      <div class="page-sub">Crie e gerencie as atividades</div>
+      <div class="form-card">
+        <div class="form-card-title">🤖 Gerar Nova Missão com IA</div>
+        <div class="form-grid">
+          <div>
+            <label>Matéria</label>
+            <select id="fSubject">
+              <option value="Matemática">🔢 Matemática</option>
+              <option value="Português">📝 Português</option>
+              <option value="Ciências">🔬 Ciências</option>
+              <option value="História">📜 História</option>
+              <option value="Geografia">🗺️ Geografia</option>
+              <option value="Inglês">🌍 Inglês</option>
+              <option value="Lógica">🧠 Raciocínio Lógico</option>
+            </select>
+          </div>
+          <div>
+            <label>Tema da atividade</label>
+            <input id="fTema" placeholder="Ex: tabuada do 7, sistema solar...">
+          </div>
+          <div>
+            <label>Dificuldade</label>
+            <select id="fDiff">
+              <option value="fácil">😊 Fácil</option>
+              <option value="médio" selected>🤔 Médio</option>
+              <option value="difícil">🔥 Difícil</option>
+            </select>
+          </div>
+          <div>
+            <label>Nº de questões</label>
+            <select id="fQty">
+              <option value="5">5 questões</option>
+              <option value="8" selected>8 questões</option>
+              <option value="10">10 questões</option>
+            </select>
+          </div>
+          <div class="form-full">
+            <label>Para qual aluno?</label>
+            <select id="fTarget"><option value="">— Todos os alunos —</option></select>
+          </div>
+        </div>
+        <div class="tip">💡 Configure a API Key Anthropic em ⚙️ Config para gerar questões com IA automaticamente.</div>
+        <button class="btn btn-orange btn-block" id="btnGerar" onclick="gerarMissao()">🤖 Gerar Missão com IA</button>
+        <div class="preview-box" id="previewBox">
+          <div class="preview-ttl">✅ MISSÃO GERADA — Prévia:</div>
+          <div id="previewContent"></div>
+          <button class="btn btn-success btn-block" style="margin-top:0.75rem" onclick="publicarMissao()">🚀 Publicar Missão!</button>
+        </div>
+      </div>
+      <div class="table-card">
+        <div class="table-head"><div class="table-title">📋 Todas as Missões</div><button class="btn btn-primary" style="padding:6px 14px;font-size:0.8rem" onclick="recarregar()">🔄 Atualizar</button></div>
+        <table>
+          <thead><tr><th>Nome</th><th>Matéria</th><th>Dific.</th><th>Questões</th><th>XP</th><th>Para</th><th>Status</th><th></th></tr></thead>
+          <tbody id="missoesBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- RESULTADOS -->
+    <div class="page" id="pgResultados">
+      <div class="page-title">Resultados 📋</div>
+      <div class="page-sub">Acompanhe o desempenho de cada aluno</div>
+      <div id="resultadosAlunos"></div>
+    </div>
+
+    <!-- CONFIG -->
+    <div class="page" id="pgConfig">
+      <div class="page-title">Configurações ⚙️</div>
+      <div class="page-sub">Ajuste o sistema</div>
+      <div class="form-card">
+        <div class="form-card-title">🔑 PIN dos Pais</div>
+        <label>Novo PIN (mínimo 4 dígitos)</label>
+        <input id="novoPin" type="password" placeholder="••••" maxlength="6" inputmode="numeric">
+        <button class="btn btn-primary" onclick="salvarPin()">💾 Alterar PIN</button>
+      </div>
+      <div class="form-card">
+        <div class="form-card-title">🤖 API Key Anthropic</div>
+        <div class="tip">Para gerar missões automaticamente com IA. Obtenha em console.anthropic.com</div>
+        <label>API Key</label>
+        <input id="apiKey" type="password" placeholder="sk-ant-...">
+        <button class="btn btn-primary" onclick="salvarApiKey()">💾 Salvar API Key</button>
+      </div>
+      <div class="form-card">
+        <div class="form-card-title">🔗 URL Google Apps Script</div>
+        <label>URL do Web App</label>
+        <input id="gsUrlCfg" placeholder="https://script.google.com/macros/s/...">
+        <button class="btn btn-primary" onclick="salvarGsUrl()">💾 Salvar e Reconectar</button>
+      </div>
+    </div>
+
+  </div><!-- /main -->
+</div><!-- /layout -->
+
+<script>
+// ═══════════════════════════════════
+//  CONFIG
+// ═══════════════════════════════════
+const GS_DEFAULT = 'https://script.google.com/macros/s/AKfycbxvFxmC5_zWMsGa9QaGRkug58O81MhZ-DTHuXFE1EU9lJH2x61XuIpBp4S7IMw2_W3d/exec';
+
+let cfg = { pin:'1234', apiKey:'', gsUrl:'' };
+let GS  = '';
+let alunos   = [];
+let tarefas  = [];
+let resultados = [];
+let pinBuffer = '';
+let geradaTemp = null;
+
+// ═══════════════════════════════════
+//  INIT
+// ═══════════════════════════════════
+(function(){
+  try{ const c=localStorage.getItem('rgs_painel'); if(c) cfg={...cfg,...JSON.parse(c)}; }catch(e){}
+  GS = cfg.gsUrl || GS_DEFAULT;
+  document.getElementById('gsUrlCfg').value = GS;
+  document.getElementById('apiKey').value   = cfg.apiKey||'';
+})();
+
+function saveCfg(){ localStorage.setItem('rgs_painel', JSON.stringify(cfg)); }
+
+// ═══════════════════════════════════
+//  PIN LOGIN
+// ═══════════════════════════════════
+function addDigit(d){
+  if(pinBuffer.length>=6) return;
+  pinBuffer+=d;
+  atualizarDots();
+  if(pinBuffer.length>=4) setTimeout(checkPin,300);
+}
+function delDigit(){ pinBuffer=pinBuffer.slice(0,-1); atualizarDots(); }
+function atualizarDots(){
+  for(let i=0;i<4;i++){
+    document.getElementById('d'+i).classList.toggle('filled', i<pinBuffer.length);
+  }
+}
+function checkPin(){
+  if(pinBuffer===cfg.pin){
+    document.getElementById('loginPage').style.display='none';
+    document.getElementById('app').style.display='flex';
+    iniciar();
+  } else {
+    document.getElementById('pinErr').textContent='PIN incorreto. Tente novamente.';
+    pinBuffer=''; atualizarDots();
+    setTimeout(()=>document.getElementById('pinErr').textContent='',2000);
+  }
+}
+function logout(){
+  document.getElementById('app').style.display='none';
+  document.getElementById('loginPage').style.display='flex';
+  pinBuffer=''; atualizarDots();
+}
+
+// ═══════════════════════════════════
+//  JSONP
+// ═══════════════════════════════════
+function jsonp(url){
+  return new Promise((resolve,reject)=>{
+    const cb='p_cb_'+Date.now()+'_'+Math.random().toString(36).slice(2);
+    const s=document.createElement('script');
+    const t=setTimeout(()=>{ delete window[cb]; s.remove(); reject(new Error('timeout')); },12000);
+    window[cb]=(d)=>{ clearTimeout(t); delete window[cb]; s.remove(); resolve(d); };
+    s.src=url+(url.includes('?')?'&':'?')+'callback='+cb;
+    s.onerror=()=>{ clearTimeout(t); delete window[cb]; s.remove(); reject(new Error('erro')); };
+    document.head.appendChild(s);
+  });
+}
+async function gsAcao(acao, params=''){
+  const url=GS+'?action='+acao+(params?'&'+params:'');
+  const d=await jsonp(url);
+  return d;
+}
+
+// ═══════════════════════════════════
+//  CARREGAR DADOS
+// ═══════════════════════════════════
+async function iniciar(){
+  setBadge('load','⏳ Conectando...');
+  showOverlay('Carregando dados...');
+  try{
+    const d=await gsAcao('tudo');
+    if(d.alunos)  alunos  =d.alunos;
+    if(d.tarefas) tarefas =d.tarefas;
+    // Carrega resultados
+    const r=await gsAcao('resultados');
+    if(r.resultados) resultados=r.resultados;
+    setBadge('ok','✅ Online');
+    renderTudo();
+  }catch(e){
+    setBadge('err','❌ Offline');
+    toast('Erro ao conectar com o Sheets.');
+  }
+  hideOverlay();
+}
+
+async function recarregar(){ await iniciar(); toast('✅ Dados atualizados!'); }
+
+function renderTudo(){
+  renderDash(); renderAlunos(); renderMissoes(); renderResultados();
+  // Popula select de alunos
+  const sel=document.getElementById('fTarget');
+  sel.innerHTML='<option value="">— Todos os alunos —</option>';
+  alunos.forEach(a=>{ const o=document.createElement('option'); o.value=a.nome; o.textContent=a.nome; sel.appendChild(o); });
+}
+
+// ═══════════════════════════════════
+//  DASHBOARD
+// ═══════════════════════════════════
+function renderDash(){
+  document.getElementById('kAlunos').textContent    = alunos.length;
+  document.getElementById('kMissoes').textContent   = tarefas.length;
+  document.getElementById('kConcluidas').textContent= tarefas.filter(t=>t.done).length;
+  const todasNotas = resultados.map(r=>Number(r.nota)||0);
+  const med = todasNotas.length ? (todasNotas.reduce((a,b)=>a+b,0)/todasNotas.length).toFixed(1) : '-';
+  document.getElementById('kMedia').textContent = med;
+
+  // Ranking
+  const rank = [...alunos].sort((a,b)=>(b.xp||0)-(a.xp||0));
+  document.getElementById('rankingBody').innerHTML = rank.length===0
+    ? '<tr><td colspan="7" style="text-align:center;opacity:0.5;padding:1.5rem">Nenhum aluno ainda</td></tr>'
+    : rank.map((a,i)=>`
+      <tr>
+        <td><b>${i===0?'🥇':i===1?'🥈':i===2?'🥉':i+1}</b></td>
+        <td><span class="avatar">${(a.nome||'?')[0].toUpperCase()}</span>${a.nome}</td>
+        <td><span class="badge b-pend">Nível ${a.nivel||1}</span></td>
+        <td>${a.xp||0} XP</td>
+        <td>${a.missoes||0}</td>
+        <td><div class="bar-wrap"><div class="bar-track"><div class="bar-fill" style="width:${(a.media||0)*10}%"></div></div><div class="nota-num">${a.media||0}</div></div></td>
+        <td class="stars">${'⭐'.repeat(Math.min(a.estrelas||0,5))}</td>
+      </tr>`).join('');
+
+  // Últimas missões
+  const ult = [...tarefas].reverse().slice(0,8);
+  document.getElementById('recentMissoes').innerHTML = ult.length===0
+    ? '<tr><td colspan="4" style="text-align:center;opacity:0.5;padding:1.5rem">Nenhuma missão criada</td></tr>'
+    : ult.map(t=>`
+      <tr>
+        <td>${subIcon(t.subject)} ${t.name}</td>
+        <td><span class="badge b-subj">${t.subject}</span></td>
+        <td>${t.targetStudent||'Todos'}</td>
+        <td>${t.done?'<span class="badge b-ok">✅ Concluída</span>':'<span class="badge b-pend">⏳ Pendente</span>'}</td>
+      </tr>`).join('');
+}
+
+// ═══════════════════════════════════
+//  ALUNOS
+// ═══════════════════════════════════
+function renderAlunos(){
+  const el=document.getElementById('alunosBody');
+  el.innerHTML = alunos.length===0
+    ? '<tr><td colspan="7" style="text-align:center;opacity:0.5;padding:1.5rem">Nenhum aluno cadastrado</td></tr>'
+    : alunos.map(a=>`
+      <tr>
+        <td><span class="avatar">${(a.nome||'?')[0].toUpperCase()}</span><b>${a.nome}</b></td>
+        <td><span class="badge b-pend">Nível ${a.nivel||1}</span></td>
+        <td>${a.xp||0} XP</td>
+        <td>${a.missoes||0}</td>
+        <td><div class="bar-wrap"><div class="bar-track"><div class="bar-fill" style="width:${(a.media||0)*10}%"></div></div><div class="nota-num">${a.media||0}</div></div></td>
+        <td class="stars">${'⭐'.repeat(Math.min(a.estrelas||0,5))}</td>
+        <td><button class="del-icon" onclick="removerAluno('${a.nome}')">🗑️</button></td>
+      </tr>`).join('');
+}
+
+async function addAluno(){
+  const nome  = document.getElementById('novoNome').value.trim();
+  const senha = document.getElementById('novaSenha').value.trim();
+  if(!nome||!senha){ toast('Preencha nome e senha!'); return; }
+  if(senha.length<4){ toast('Senha deve ter 4+ dígitos!'); return; }
+  if(alunos.find(a=>a.nome.toLowerCase()===nome.toLowerCase())){ toast('Nome já cadastrado!'); return; }
+  showOverlay('Cadastrando aluno...');
+  try{
+    const r=await gsAcao('salvarAluno','data='+encodeURIComponent(JSON.stringify({nome,senha,xp:0,nivel:1,missoes:0,estrelas:0,notas:[]})));
+    if(r.ok){
+      alunos.push({nome,senha,xp:0,nivel:1,missoes:0,estrelas:0,notas:[],media:0});
+      renderAlunos(); renderDash();
+      document.getElementById('novoNome').value='';
+      document.getElementById('novaSenha').value='';
+      // Atualiza select
+      const sel=document.getElementById('fTarget');
+      const opt=document.createElement('option'); opt.value=nome; opt.textContent=nome; sel.appendChild(opt);
+      toast('👦 '+nome+' cadastrado!');
+    } else { toast('Erro ao salvar: '+(r.erro||'?')); }
+  }catch(e){ toast('Erro de conexão.'); }
+  hideOverlay();
+}
+
+async function removerAluno(nome){
+  if(!confirm('Remover '+nome+'?')) return;
+  showOverlay('Removendo...');
+  try{
+    await gsAcao('deletarAluno','nome='+encodeURIComponent(nome));
+    alunos=alunos.filter(a=>a.nome!==nome);
+    renderAlunos(); renderDash();
+    toast(nome+' removido.');
+  }catch(e){ toast('Erro ao remover.'); }
+  hideOverlay();
+}
+
+// ═══════════════════════════════════
+//  MISSÕES
+// ═══════════════════════════════════
+function renderMissoes(){
+  const el=document.getElementById('missoesBody');
+  el.innerHTML = tarefas.length===0
+    ? '<tr><td colspan="8" style="text-align:center;opacity:0.5;padding:1.5rem">Nenhuma missão criada</td></tr>'
+    : [...tarefas].reverse().map(t=>`
+      <tr>
+        <td>${subIcon(t.subject)} <b>${t.name}</b></td>
+        <td><span class="badge b-subj">${t.subject}</span></td>
+        <td><span class="badge b-diff">${t.diff||'médio'}</span></td>
+        <td style="text-align:center">${t.questions.length}</td>
+        <td style="text-align:center"><span class="badge b-pend">${t.xp} XP</span></td>
+        <td>${t.targetStudent||'Todos'}</td>
+        <td>${t.done?'<span class="badge b-ok">✅ '+t.score+'/10</span>':'<span class="badge b-pend">⏳ Pendente</span>'}</td>
+        <td><button class="del-icon" onclick="removerMissao('${t.id}')">🗑️</button></td>
+      </tr>`).join('');
+}
+
+async function gerarMissao(){
+  const subject = document.getElementById('fSubject').value;
+  const tema    = document.getElementById('fTema').value.trim();
+  const diff    = document.getElementById('fDiff').value;
+  const qty     = parseInt(document.getElementById('fQty').value);
+  const target  = document.getElementById('fTarget').value;
+  if(!tema){ toast('Descreva o tema!'); return; }
+
+  const btn=document.getElementById('btnGerar');
+  btn.disabled=true; btn.innerHTML='<div class="spinner spinner-sm"></div> Gerando...';
+  document.getElementById('previewBox').classList.remove('show');
+
+  if(!cfg.apiKey){
+    geradaTemp=makeTemplate(subject,tema,diff,qty,target);
+    showPreview(); btn.disabled=false; btn.textContent='🤖 Gerar Missão com IA'; return;
+  }
+
+  const prompt=`Você é um professor criativo. Crie ${qty} questões de múltipla escolha sobre "${tema}" (matéria: ${subject}, nível: ${diff}) para uma criança do ensino fundamental.
+Responda APENAS com JSON válido:
+{"title":"Nome animado da missão","questions":[{"question":"Pergunta","options":["A) op1","B) op2","C) op3","D) op4"],"answer":"A) op1"}]}
+Apenas JSON, sem texto extra.`;
+
+  try{
+    const res=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':cfg.apiKey,'anthropic-version':'2023-06-01'},
+      body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:2000,messages:[{role:'user',content:prompt}]})
+    });
+    const data=await res.json();
+    if(data.error) throw new Error(data.error.message);
+    const jm=data.content[0].text.match(/\{[\s\S]*\}/);
+    const parsed=JSON.parse(jm[0]);
+    geradaTemp={id:'t'+Date.now(),name:parsed.title,subject,diff,questions:parsed.questions,
+      xp:qty*10,created:new Date().toISOString(),done:false,targetStudent:target||''};
+    showPreview();
+  }catch(e){
+    toast('Erro na IA. Usando modelo padrão.'); console.error(e);
+    geradaTemp=makeTemplate(subject,tema,diff,qty,target);
+    showPreview();
+  }
+  btn.disabled=false; btn.innerHTML='🤖 Gerar Missão com IA';
+}
+
+function makeTemplate(subject,tema,diff,qty,target){
+  const qs=[];
+  for(let i=1;i<=qty;i++) qs.push({question:`Questão ${i} sobre "${tema}".`,options:['A) Opção 1','B) Opção 2','C) Opção 3','D) Opção 4'],answer:'A) Opção 1'});
+  return{id:'t'+Date.now(),name:`Missão: ${tema}`,subject,diff,questions:qs,xp:qty*10,created:new Date().toISOString(),done:false,targetStudent:target||''};
+}
+
+function showPreview(){
+  const q=geradaTemp.questions;
+  document.getElementById('previewContent').innerHTML=
+    `<div style="font-weight:800;color:var(--gold);margin-bottom:8px">${geradaTemp.name}</div>`+
+    q.slice(0,3).map((it,i)=>`<div class="preview-q">📌 ${i+1}. ${it.question}</div>`).join('')+
+    (q.length>3?`<div class="preview-q" style="opacity:0.5">...e mais ${q.length-3} questões</div>`:'')+
+    `<div style="font-size:0.75rem;color:var(--neon);margin-top:8px">✅ ${q.length} questões com gabarito</div>`;
+  document.getElementById('previewBox').classList.add('show');
+}
+
+async function publicarMissao(){
+  if(!geradaTemp) return;
+  showOverlay('Publicando missão...');
+  try{
+    const r=await gsAcao('salvarTarefa','data='+encodeURIComponent(JSON.stringify(geradaTemp)));
+    if(r.ok){
+      tarefas.push(geradaTemp);
+      renderMissoes(); renderDash();
+      document.getElementById('previewBox').classList.remove('show');
+      document.getElementById('fTema').value='';
+      geradaTemp=null;
+      toast('🚀 Missão publicada!');
+    } else { toast('Erro ao publicar.'); }
+  }catch(e){ toast('Erro de conexão.'); }
+  hideOverlay();
+}
+
+async function removerMissao(id){
+  if(!confirm('Remover esta missão?')) return;
+  showOverlay('Removendo...');
+  try{
+    await gsAcao('deletarTarefa','id='+encodeURIComponent(id));
+    tarefas=tarefas.filter(t=>t.id!==id);
+    renderMissoes(); renderDash();
+    toast('Missão removida.');
+  }catch(e){ toast('Erro ao remover.'); }
+  hideOverlay();
+}
+
+// ═══════════════════════════════════
+//  RESULTADOS
+// ═══════════════════════════════════
+function renderResultados(){
+  const el=document.getElementById('resultadosAlunos');
+  if(!alunos.length){ el.innerHTML='<div style="opacity:0.5;text-align:center;padding:2rem">Nenhum aluno cadastrado.</div>'; return; }
+  el.innerHTML=alunos.map(a=>{
+    const resAluno=resultados.filter(r=>(r.aluno||'').toLowerCase()===a.nome.toLowerCase());
+    const notas=resAluno.map(r=>Number(r.nota)||0);
+    const media=notas.length?(notas.reduce((x,y)=>x+y,0)/notas.length).toFixed(1):'-';
+    return `
+      <div class="table-card" style="margin-bottom:1.25rem">
+        <div class="table-head">
+          <div style="display:flex;align-items:center;gap:10px">
+            <span class="avatar">${a.nome[0].toUpperCase()}</span>
+            <div>
+              <div class="table-title">${a.nome}</div>
+              <div style="font-size:0.72rem;color:var(--muted)">Nível ${a.nivel||1} • ${a.xp||0} XP • Média: ${media}</div>
+            </div>
+          </div>
+          <span class="badge b-pend">${resAluno.length} missões</span>
+        </div>
+        ${resAluno.length===0
+          ? '<div style="text-align:center;opacity:0.5;padding:1.5rem;font-size:0.85rem">Nenhuma missão concluída ainda.</div>'
+          : `<table>
+              <thead><tr><th>Missão</th><th>Matéria</th><th>Certas</th><th>Nota</th><th>Aprovação</th><th>Estrelas</th><th>Data</th></tr></thead>
+              <tbody>${resAluno.map(r=>`
+                <tr>
+                  <td><b>${r.missao||'-'}</b></td>
+                  <td><span class="badge b-subj">${r.materia||'-'}</span></td>
+                  <td>${r.certas||0}/${r.total||0}</td>
+                  <td><div class="bar-wrap"><div class="bar-track"><div class="bar-fill" style="width:${(Number(r.nota)||0)*10}%"></div></div><div class="nota-num">${r.nota||0}</div></div></td>
+                  <td>${r.aprovacao||'-'}</td>
+                  <td>${r.estrelas||''}</td>
+                  <td style="font-size:0.75rem;color:var(--muted)">${r.data?new Date(r.data).toLocaleDateString('pt-BR'):'-'}</td>
+                </tr>`).join('')}
+              </tbody>
+            </table>`}
+      </div>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════
+//  CONFIG
+// ═══════════════════════════════════
+function salvarPin(){
+  const p=document.getElementById('novoPin').value.trim();
+  if(p.length<4){ toast('PIN deve ter 4+ dígitos!'); return; }
+  cfg.pin=p; saveCfg(); document.getElementById('novoPin').value='';
+  toast('✅ PIN alterado!');
+}
+function salvarApiKey(){
+  cfg.apiKey=document.getElementById('apiKey').value.trim();
+  saveCfg(); toast('✅ API Key salva!');
+}
+function salvarGsUrl(){
+  const url=document.getElementById('gsUrlCfg').value.trim();
+  cfg.gsUrl=url; GS=url||GS_DEFAULT; saveCfg();
+  toast('✅ URL salva! Reconectando...');
+  setTimeout(iniciar,500);
+}
+
+// ═══════════════════════════════════
+//  NAVEGAÇÃO
+// ═══════════════════════════════════
+function goPage(id){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  document.getElementById('nav-'+id).classList.add('active');
+}
+
+// ═══════════════════════════════════
+//  UTILITÁRIOS
+// ═══════════════════════════════════
+function subIcon(s){ return{Matemática:'🔢',Português:'📝',Ciências:'🔬',História:'📜',Geografia:'🗺️',Inglês:'🌍',Lógica:'🧠'}[s]||'📚'; }
+function setBadge(s,m){ const b=document.getElementById('gsBadge'); b.className='gs-pill gs-'+s; b.textContent=m; }
+function showOverlay(m){ document.getElementById('overlayMsg').textContent=m; document.getElementById('overlay').classList.add('show'); }
+function hideOverlay(){ document.getElementById('overlay').classList.remove('show'); }
+function toast(m){ const t=document.getElementById('toast'); t.textContent=m; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2800); }
+</script>
+</body>
+</html>
