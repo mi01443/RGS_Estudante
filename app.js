@@ -8,7 +8,8 @@
 // ──────────────────────────────────────────
 const GS_URL_DEFAULT = 'https://script.google.com/macros/s/AKfycby9E6-dpf69cA9yCNM9fwqEpCqSj64ZOGPjoq4LouVOxCE6uKA65uEwHwBrl8CXvOez/exec';
 const GEMINI_KEY     = 'AQ.Ab8RN6Lc7heUfMlyrLUzzrRhARfSSBallCjJWQPvSgFlPD6oLg';
-const GEMINI_URL     = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
+const GEMINI_URL     = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
+const GEMINI_URL_V1  = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent';
 
 // ──────────────────────────────────────────
 //  ESTADO GLOBAL
@@ -586,24 +587,35 @@ Regras importantes:
 - Apenas o JSON, sem markdown, sem explicações`;
 
     try {
-      const res = await fetch(GEMINI_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': GEMINI_KEY },
-        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.7, maxOutputTokens: 3000 } })
-      });
-      const data = await res.json();
+      // Tenta Gemini — chave na URL
+      const body = JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.7, maxOutputTokens: 3000 } });
+      let data;
+      // Tenta v1beta primeiro, depois v1 como fallback
+      for (const url of [GEMINI_URL, GEMINI_URL_V1]) {
+        const r = await fetch(url + '?key=' + GEMINI_KEY, { method:'POST', headers:{'Content-Type':'application/json'}, body });
+        data = await r.json();
+        console.log('Gemini [' + url.includes('v1beta') + ']:', JSON.stringify(data).slice(0, 400));
+        if (!data.error) break;
+        console.warn('Tentando próxima URL...');
+      }
       if (data.error) throw new Error(data.error.message || JSON.stringify(data.error));
+      if (!data.candidates || !data.candidates.length) throw new Error('Sem candidatos: ' + JSON.stringify(data));
       const text = data.candidates[0].content.parts[0].text;
-      const jm   = text.match(/\{[\s\S]*\}/); if (!jm) throw new Error('JSON não encontrado na resposta');
+      console.log('Gemini text:', text.slice(0, 200));
+      // Limpa possível markdown
+      const clean = text.replace(/```json|```/g, '').trim();
+      const jm = clean.match(/\{[\s\S]*\}/);
+      if (!jm) throw new Error('JSON não encontrado. Resposta: ' + text.slice(0, 100));
       const parsed = JSON.parse(jm[0]);
       if (!parsed.questions || !parsed.questions.length) throw new Error('Sem questões na resposta');
       geradaTemp = { id: 't' + Date.now(), name: parsed.title, subject, diff, questions: parsed.questions, xp: qty * 10, created: new Date().toISOString(), done: false, targetStudent: target || '' };
       this.showPreview();
     } catch (e) {
       console.error('Gemini error:', e);
-      toast('⚠️ Erro na IA: ' + e.message + '. Criando modelo padrão...');
-      geradaTemp = makeTemplate(subject, tema, diff, qty, target);
-      this.showPreview();
+      toast('⚠️ Erro na IA: ' + e.message);
+      // NÃO cria template — mostra erro para depurar
+      btn.disabled = false; btn.innerHTML = '🤖 Gerar Missão com IA';
+      return;
     }
 
     btn.disabled = false; btn.innerHTML = '🤖 Gerar Missão com IA';
