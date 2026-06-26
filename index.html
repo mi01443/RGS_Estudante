@@ -975,10 +975,7 @@ async function generateTask(){
   btn.disabled=true;txt.innerHTML='<span class="spinner"></span> Gerando com IA...';
   document.getElementById('previewCard').classList.remove('visible');
 
-  if(!config.apiKey){
-    generatedTask=makeTemplate(subject,type,diff,qty,target);
-    showPreview();btn.disabled=false;txt.textContent='🤖 Gerar Missão com IA';return;
-  }
+  // Sempre tenta Gemini (gratuito)
 
   const prompt=`Você é um professor criativo. Crie ${qty} questões de múltipla escolha sobre "${type}" (matéria: ${subject}, nível: ${diff}) para uma criança do ensino fundamental.
 Responda APENAS com JSON válido neste formato:
@@ -986,21 +983,22 @@ Responda APENAS com JSON válido neste formato:
 Regras: linguagem simples, 4 opções sempre, resposta correta presente. Apenas JSON, sem texto extra.`;
 
   try{
-    const res=await fetch('https://api.anthropic.com/v1/messages',{
+    const GEMINI_KEY='AQ.Ab8RN6Lc7heUfMlyrLUzzrRhARfSSBallCjJWQPvSgFlPD6oLg';
+    const res=await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent',{
       method:'POST',
-      headers:{'Content-Type':'application/json','x-api-key':config.apiKey,'anthropic-version':'2023-06-01'},
-      body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:2000,messages:[{role:'user',content:prompt}]})
+      headers:{'Content-Type':'application/json','x-goog-api-key':GEMINI_KEY},
+      body:JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:{temperature:0.7,maxOutputTokens:2000}})
     });
     const data=await res.json();
-    if(data.error)throw new Error(data.error.message);
-    const text=data.content[0].text;
+    if(data.error)throw new Error(data.error.message||JSON.stringify(data.error));
+    const text=data.candidates[0].content.parts[0].text;
     const jm=text.match(/\{[\s\S]*\}/);if(!jm)throw new Error('JSON não encontrado');
     const parsed=JSON.parse(jm[0]);
     generatedTask={id:'t'+Date.now(),name:parsed.title,subject,diff,questions:parsed.questions,
       xp:qty*10,created:new Date().toISOString(),done:false,targetStudent:target||''};
     showPreview();
   }catch(err){
-    console.error(err);showToast('Erro na IA. Usando modelo padrão...');
+    console.error(err);showToast('Erro na IA: '+err.message);
     generatedTask=makeTemplate(subject,type,diff,qty,target);
     showPreview();
   }
