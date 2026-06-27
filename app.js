@@ -81,8 +81,31 @@ window.addEventListener('appinstalled', () => {
 // ──────────────────────────────────────────
 const SFX = (() => {
   let ctx = null;
+  let unlocked = false;
+
+  // Desbloqueia audio no primeiro toque
+  function unlock() {
+    if (unlocked) return;
+    try {
+      ctx = new (window.AudioContext || window.webkitAudioContext)();
+      // Toca silêncio para desbloquear
+      const buf = ctx.createBuffer(1, 1, 22050);
+      const src = ctx.createBufferSource();
+      src.buffer = buf; src.connect(ctx.destination); src.start(0);
+      unlocked = true;
+      document.getElementById('soundBtn').style.display = 'none';
+      console.log('Audio desbloqueado!');
+    } catch(e) { console.warn('Audio unlock fail', e); }
+  }
+
+  document.addEventListener('touchstart', unlock, { once: true });
+  document.addEventListener('click',      unlock, { once: true });
+
   function getCtx() {
-    if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)();
+    if (!ctx) {
+      try { ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e) {}
+    }
+    if (ctx && ctx.state === 'suspended') ctx.resume();
     return ctx;
   }
 
@@ -364,6 +387,26 @@ const App = {
     currentStudent = null;
     showScreen('screenLogin');
     document.getElementById('modeBtn').textContent = '🔒 Pais';
+  },
+
+  enableSound() {
+    try {
+      // Força criação do contexto de áudio
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtx) { toast('Seu navegador não suporta áudio'); return; }
+      const tempCtx = new AudioCtx();
+      const buf = tempCtx.createBuffer(1, 1, 22050);
+      const src = tempCtx.createBufferSource();
+      src.buffer = buf; src.connect(tempCtx.destination); src.start(0);
+      setTimeout(() => {
+        SFX.correct();
+        document.getElementById('soundBtn').textContent = '🔊 Som';
+        document.getElementById('soundBtn').style.background = 'rgba(57,255,20,0.2)';
+        toast('🔊 Sons ativados!');
+      }, 100);
+    } catch(e) {
+      toast('Erro ao ativar som: ' + e.message);
+    }
   },
 
   async installPWA() {
