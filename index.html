@@ -55,6 +55,7 @@
     <div class="logo">RGS<span>Est.</span>🚀<small>ESTUDANTE</small></div>
     <div class="header-right">
       <span class="gs-badge" id="gsBadge">⏳</span>
+      <button class="mode-btn" id="soundBtn" onclick="App.enableSound()" title="Ativar Sons">🔇 Som</button>
       <button class="mode-btn" id="installBtn" onclick="App.installPWA()" style="display:none">📲 Instalar</button>
       <button class="mode-btn" id="modeBtn" onclick="App.toggleMode()">🔒 Pais</button>
     </div>
@@ -323,7 +324,7 @@
 <script>
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/RGS_Estudante/sw.js')
+    navigator.serviceWorker.register('./sw.js')
       .then(r => console.log('SW registrado'))
       .catch(e => console.log('SW erro:', e));
   });
